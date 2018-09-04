@@ -1,0 +1,842 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Splitwise_Backend.Models;
+
+namespace Splitwise_Backend.Controllers
+{
+    [Produces("application/json")]
+    [Route("api/Expenses")]
+    public class ExpensesController : Controller
+    {
+        private readonly Splitwise_BackendContext _context;
+
+        public ExpensesController(Splitwise_BackendContext context)
+        {
+            _context = context;
+        }
+
+        // GET: api/Expenses
+        [HttpGet]
+        public IEnumerable<Expense> GetExpense()
+        {
+            var expense = _context.Expense
+                .Select(e => new Expense
+                {
+                    ExpenseId = e.ExpenseId,
+                    Friend = e.Friend.Select(f => new Friend
+                    {
+                        FriendId = f.FriendId
+                    }),
+                    Group = e.Group.Select(g => new Group
+                    {
+                        GroupId = g.GroupId
+                    }),
+                    Description = e.Description,
+                    Cost = e.Cost,
+                    Date = e.Date,
+                    Created_At = e.Created_At,
+                    Updated_At = e.Updated_At,
+                    Deleted_At = e.Deleted_At,
+                    Details = e.Details,
+                    Category = e.Category.Select(c => new Category
+                    {
+                        CategoryId = c.CategoryId,
+                        Name = c.Name,
+                        Sub = c.Sub.Select(s => new SubCategory
+                        {
+                            Name = s.Name,
+                            SubCategoryId = s.SubCategoryId
+                        })
+                    }),
+                    User = e.User.Select(u => new Models.User
+                    {
+                        UserId = u.UserId,
+                        FirstName = u.FirstName,
+                        LastName = u.LastName,
+                        Email = u.Email
+                    })
+                });
+            return expense.ToList();
+        }
+
+        // GET: api/Expenses/5
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetExpense([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // var expense = await _context.Expense.SingleOrDefaultAsync(m => m.ExpenseId == id);
+            var expense = _context.Expense
+                .Where(e => e.ExpenseId == id)
+                .Select(e => new Expense
+                {
+                    ExpenseId = e.ExpenseId,
+                    Friend = e.Friend.Select(f => new Friend
+                    {
+                        FriendId = f.FriendId
+                    }),
+                    Group = e.Group.Select(g => new Group
+                    {
+                        GroupId = g.GroupId
+                    }),
+                    Description = e.Description,
+                    Cost = e.Cost,
+                    Date = e.Date,
+                    Created_At = e.Created_At,
+                    Updated_At = e.Updated_At,
+                    Deleted_At = e.Deleted_At,
+                    Details = e.Details,
+                    Category = e.Category.Select(c => new Category
+                    {
+                        CategoryId = c.CategoryId,
+                        Name = c.Name,
+                        Sub = c.Sub.Select(s => new SubCategory
+                        {
+                            Name = s.Name,
+                            SubCategoryId = s.SubCategoryId
+                        })
+                    }),
+                    User = e.User.Select(u => new Models.User
+                    {
+                        UserId = u.UserId,
+                        FirstName = u.FirstName,
+                        LastName = u.LastName,
+                        Email = u.Email
+                    })
+                });
+
+
+            if (expense == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(expense);
+        }
+
+        // PUT: api/Expenses/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutExpense([FromRoute] int id, [FromBody] Expense expense)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != expense.ExpenseId)
+            {
+                return BadRequest();
+            }
+
+            _context.Entry(expense).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!ExpenseExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+
+        // POST: api/Expenses
+        [HttpPost]
+        public async Task<IActionResult> PostExpense([FromBody] Expense expense)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            _context.Expense.Add(expense);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetExpense", new { id = expense.ExpenseId }, expense);
+        }
+
+        // DELETE: api/Expenses/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteExpense([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var expense = await _context.Expense.SingleOrDefaultAsync(m => m.ExpenseId == id);
+            if (expense == null)
+            {
+                return NotFound();
+            }
+
+            _context.Expense.Remove(expense);
+            await _context.SaveChangesAsync();
+
+            return Ok(expense);
+        }
+
+        private bool ExpenseExists(int id)
+        {
+            return _context.Expense.Any(e => e.ExpenseId == id);
+        }
+    }
+}
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Splitwise_Backend.Models;
+
+namespace Splitwise_Backend.Controllers
+{
+    [Produces("application/json")]
+    [Route("api/Friends")]
+    public class FriendsController : Controller
+    {
+        private readonly Splitwise_BackendContext _context;
+
+        public FriendsController(Splitwise_BackendContext context)
+        {
+            _context = context;
+        }
+
+        // GET: api/Friends
+        [HttpGet]
+        public IEnumerable<Friend> GetFriend()
+        {
+            var friend = _context.Friend
+                 .Include("Picture")
+                 .Select(f => new Friend
+                 {
+                     FriendId = f.FriendId,
+                     FirstName = f.FirstName,
+                     LastName = f.LastName,
+                     Email = f.Email,
+                     Balance = f.Balance,
+                     RegistrationStatus = f.RegistrationStatus,
+                     UpdatedAt = f.UpdatedAt,
+                     Group = f.Group.Select(g => new Group
+                     {
+                         GroupId = g.GroupId,
+                         GroupName = g.GroupName,
+                         CountryCode = g.CountryCode,
+                         UpdatedAt = g.UpdatedAt,
+                     }),
+                     Picture = f.Picture.Select(p => new Picture
+                     {
+                         Picture_Id = p.Picture_Id,
+                         Small = p.Small,
+                         Large = p.Large,
+                         Medium = p.Medium
+                     })
+                 });
+            return friend.ToList();
+        }
+
+        // GET: api/Friends/5
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetFriend([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            //var friend = await _context.Friend.SingleOrDefaultAsync(m => m.FriendId == id);
+            var friend = _context.Friend
+                .Where(f => f.FriendId == id)
+                .Include("Picture")
+                .Select(f => new Friend
+                {
+                    FriendId = f.FriendId,
+                    FirstName = f.FirstName,
+                    LastName = f.LastName,
+                    Email = f.Email,
+                    Balance = f.Balance,
+                    RegistrationStatus = f.RegistrationStatus,
+                    UpdatedAt = f.UpdatedAt,
+                    Group = f.Group.Select(g => new Group
+                    {
+                        GroupId = g.GroupId,
+                        GroupName = g.GroupName,
+                        CountryCode = g.CountryCode,
+                        UpdatedAt = g.UpdatedAt,
+                    }),
+                    Picture = f.Picture.Select(p => new Picture
+                    {
+                        Picture_Id = p.Picture_Id,
+                        Small = p.Small,
+                        Large = p.Large,
+                        Medium = p.Medium
+                    })
+                });
+
+            if (friend == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(friend);
+        }
+
+        // PUT: api/Friends/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutFriend([FromRoute] int id, [FromBody] Friend friend)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != friend.FriendId)
+            {
+                return BadRequest();
+            }
+
+            _context.Entry(friend).State = EntityState.Modified;
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!FriendExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+            return NoContent();
+        }
+
+        // POST: api/Friends
+        [HttpPost]
+        public async Task<IActionResult> PostFriend([FromBody] Friend friend)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            _context.Friend.Add(friend);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetFriend", new { id = friend.FriendId }, friend);
+        }
+
+        // DELETE: api/Friends/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteFriend([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var friend = await _context.Friend.SingleOrDefaultAsync(m => m.FriendId == id);
+            if (friend == null)
+            {
+                return NotFound();
+            }
+
+            _context.Friend.Remove(friend);
+            await _context.SaveChangesAsync();
+
+            return Ok(friend);
+        }
+
+        private bool FriendExists(int id)
+        {
+            return _context.Friend.Any(e => e.FriendId == id);
+        }
+    }
+}
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Splitwise_Backend.Models;
+
+namespace Splitwise_Backend.Controllers
+{
+    [Produces("application/json")]
+    [Route("api/Groups")]
+    public class GroupsController : Controller
+    {
+        private readonly Splitwise_BackendContext _context;
+
+        public GroupsController(Splitwise_BackendContext context)
+        {
+            _context = context;
+        }
+
+        // GET: api/Groups
+        [HttpGet]
+        public IEnumerable<Group> GetGroup()
+        {
+            var group = _context
+                .Group
+                .Include("Member")
+                .Select(g => new Group
+                {
+                    GroupId = g.GroupId,
+                    GroupName = g.GroupName,
+                    CountryCode = g.CountryCode,
+                    UpdatedAt = g.UpdatedAt,
+                    Member = g.Member.Select(m => new Member
+                    {
+                       MemberId = m.MemberId,
+                       FirstName = m.FirstName,
+                       LastName = m.LastName,
+                       Email = m.Email
+                    }),
+                    Payment = g.Payment.Select(p => new Payment
+                    {
+                        PaymentId = p.PaymentId,
+                        From = p.From,
+                        To = p.To,
+                        Amount = p.Amount
+                    }) 
+                });
+
+            return group.ToList();
+        }
+
+        // GET: api/Groups/5
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetGroup([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // var @group = await _context.Group.SingleOrDefaultAsync(m => m.GroupId == id);
+                var group = _context
+                .Group.Where(u => u.GroupId == id)
+                .Include("Member")
+                .Include("Payment")
+                .Select(g => new Group
+                {
+                    GroupId = g.GroupId,
+                    GroupName = g.GroupName,
+                    CountryCode = g.CountryCode,
+                    UpdatedAt = g.UpdatedAt,
+                    Member = g.Member.Select(m => new Member
+                    {
+                        Balance = m.Balance,
+                        Email = m.Email,
+                        FirstName = m.FirstName,
+                        LastName = m.LastName,
+                        MemberId = m.MemberId
+                    }),
+                    Payment = g.Payment.Select(p => new Payment
+                    {
+                        From = p.From,
+                        To = p.To,
+                        Amount = p.Amount,
+                        PaymentId = p.PaymentId
+                    })
+                });
+
+            if (@group == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(@group);
+        }
+
+        // PUT: api/Groups/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutGroup([FromRoute] int id, [FromBody] Group @group)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != @group.GroupId)
+            {
+                return BadRequest();
+            }
+
+            _context.Entry(@group).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!GroupExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+
+        // POST: api/Groups
+        [HttpPost]
+        public async Task<IActionResult> PostGroup([FromBody] Group @group)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            _context.Group.Add(@group);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetGroup", new { id = @group.GroupId }, @group);
+        }
+
+        // DELETE: api/Groups/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteGroup([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var @group = await _context.Group.SingleOrDefaultAsync(m => m.GroupId == id);
+            if (@group == null)
+            {
+                return NotFound();
+            }
+
+            _context.Group.Remove(@group);
+            await _context.SaveChangesAsync();
+
+            return Ok(@group);
+        }
+
+        private bool GroupExists(int id)
+        {
+            return _context.Group.Any(e => e.GroupId == id);
+        }
+    }
+}
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Splitwise_Backend.Models;
+
+namespace Splitwise_Backend.Controllers
+{
+    [Produces("application/json")]
+    [Route("api/Users")]
+    public class UsersController : Controller
+    {
+        private readonly Splitwise_BackendContext _context;
+
+        public UsersController(Splitwise_BackendContext context)
+        {
+            _context = context;
+        }
+
+
+        // GET: api/Users
+        [HttpGet]
+        public IEnumerable<User> GetUser()
+        {
+            var users = _context
+                .User
+                .Include("Picture")
+                .Select(t => new User
+                {
+                    UserId = t.UserId,
+                    Email = t.Email,
+                    FirstName = t.FirstName,
+                    LastName = t.LastName,
+                    Registration = t.Registration,
+                    Picture = t.Picture.Select(p => new Picture
+                    {
+                        Picture_Id = p.Picture_Id,
+                        Small = p.Small,
+                        Medium = p.Medium,
+                        Large = p.Large
+                    }),
+                    
+                   
+
+                }).ToList();
+            return users;
+        }
+
+        // GET: api/Users/5
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetUser([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // var user = await _context.User.SingleOrDefaultAsync(m => m.UserId == id);
+
+            var user = _context.User
+                .Where(u => u.UserId == id)
+                .Include("Picture")
+                .Select(u => new User
+                {
+                    UserId = u.UserId,
+                    FirstName = u.FirstName,
+                    LastName = u.LastName,
+                    Registration = u.Registration,
+                    Picture = u.Picture.Select(p => new Picture
+                    {
+                        Picture_Id = p.Picture_Id,
+                        Small = p.Small,
+                        Medium = p.Medium,
+                        Large = p.Large
+                    })
+                });
+
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(user);
+        }
+
+
+        // PUT: api/Users/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutUser([FromRoute] int id, [FromBody] User user)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != user.UserId)
+            {
+                return BadRequest();
+            }
+
+            _context.Entry(user).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!UserExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+
+        // POST: api/Users
+        [HttpPost]
+        public async Task<IActionResult> PostUser([FromBody] User user)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            _context.User.Add(user);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetUser", new { id = user.UserId }, user);
+        }
+
+        // DELETE: api/Users/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteUser([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var user = await _context.User.SingleOrDefaultAsync(m => m.UserId == id);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            _context.User.Remove(user);
+            await _context.SaveChangesAsync();
+
+            return Ok(user);
+        }
+
+        private bool UserExists(int id)
+        {
+            return _context.User.Any(e => e.UserId == id);
+        }
+    }
+}
+
+using System.ComponentModel.DataAnnotations;
+using System.Collections.Generic;
+
+namespace Splitwise_Backend.Models
+{
+    public class Category
+    {
+        [Key]
+        public int CategoryId { get; set; }
+        public string Name { get; set; }
+        public IEnumerable<SubCategory> Sub { get; set; }
+    }
+
+    public class SubCategory
+    {
+        [Key]
+        public int SubCategoryId { get; set; }
+        public string Name { get; set; }
+    }
+}
+
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace Splitwise_Backend.Models
+{
+    public class Expense
+    {
+        [Key]
+        public int ExpenseId { get; set; }
+        public IEnumerable<Group> Group { get; set; }
+        public IEnumerable<Friend> Friend { get; set; }
+        public string Description { get; set; }
+        public string Details { get; set; }
+        public int Cost { get; set; }
+        public DateTime Date { get; set; }
+        public IEnumerable<Category> Category { get; set; }
+        public DateTime Created_At { get; set; }
+        public DateTime Updated_At { get; set; }
+        public DateTime Deleted_At { get; set; }
+        public IEnumerable<User> User { get; set; }
+    }
+}
+
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace Splitwise_Backend.Models
+{
+    
+    public class Friend
+    {
+        [Key]
+        public int FriendId { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string Email { get; set; }
+        public string RegistrationStatus { get; set; }
+        public IEnumerable<Picture> Picture { get; set; }
+        public IEnumerable<Group> Group { get; set; }
+        public int Balance { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+}
+
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
+namespace Splitwise_Backend.Models
+{
+    public class Group
+    {
+        [Key]
+        public int GroupId { get; set; }
+        public string GroupName { get; set; }
+        public string CountryCode { get; set; }
+        public DateTime UpdatedAt { get; set; } 
+        public IEnumerable<Member> Member { get; set; }
+        public IEnumerable<Payment> Payment { get; set; }
+        
+    }
+}
+
+using System.ComponentModel.DataAnnotations;
+namespace Splitwise_Backend.Models
+{
+    public class Member
+    {
+        [Key]
+        public int MemberId { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string Email { get; set; }
+        public int Balance { get; set; }
+    }
+}
+
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Splitwise_Backend.Models
+{
+    public class Payment
+    {
+        [Key]
+        public int PaymentId { get; set; }
+        public string From { get; set; }
+        public string To { get; set; }
+        public int Amount { get; set; }
+    }
+}
+
+
